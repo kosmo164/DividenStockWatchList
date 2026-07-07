@@ -1,0 +1,15 @@
+{
+	"folders": [
+		{
+			"path": "../배당주"
+		},
+		{
+			"name": "DividenStockWatchList",
+			"path": "../../Users/KOSMO/git/DividenStockWatchList/DividenStockWatchList"
+		}
+	],
+	"settings": {
+		"python-envs.defaultEnvManager": "ms-python.python:conda",
+		"python-envs.defaultPackageManager": "ms-python.python:conda"
+	}
+}

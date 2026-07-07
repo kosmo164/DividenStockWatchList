@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ko"> 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>배당주 정보 뱅크</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; font-family: 'Pretendard', sans-serif; color: #1e293b; }
+        .navbar { background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }
+        .card { border: none; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.03); }
+        .table th { background-color: #f1f5f9; color: #475569; font-weight: 600; text-transform: uppercase; font-size: 0.8rem; }
+        .table td { padding: 16px; vertical-align: middle; }
+        .rank-badge { background-color: #e2e8f0; color: #334155; font-weight: bold; border-radius: 8px; padding: 4px 8px; }
+        .badge-growth { background-color: #d1fae5; color: #065f46; }
+        .badge-stable { background-color: #e0f2fe; color: #0369a1; }
+        .badge-none { background-color: #f1f5f9; color: #64748b; }
+        .page-btn { border-radius: 30px; font-weight: 500; padding: 10px 24px; }
+        .error-container { text-align: center; padding: 50px 20px; }
+        .error-icon { font-size: 4rem; color: #ef4444; margin-bottom: 20px; }
+        .text-exdate { font-size: 0.9rem; color: #475569; font-weight: 500; }
+        .market-tab { border-radius: 30px; padding: 10px 28px; font-weight: 600; text-decoration: none; }
+        .market-tab.active { background-color: #0f172a; color: #fff; }
+        .market-tab.inactive { background-color: #e2e8f0; color: #334155; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark shadow-sm py-3">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">🏦 배당주 정보 뱅크</span>
+            <span class="badge bg-success">
+                {% if market == 'us' %}Alpha Vantage 연동{% else %}공공데이터포털(금융위원회) 연동{% endif %}
+            </span>
+        </div>
+    </nav>
+
+    <div class="container my-5">
+        <div class="d-flex gap-2 mb-4">
+            <a href="/?market=us" class="market-tab {{ 'active' if market == 'us' else 'inactive' }}">🇺🇸 미국 배당주</a>
+            <a href="/?market=kr" class="market-tab {{ 'active' if market == 'kr' else 'inactive' }}">🇰🇷 국내 배당주</a>
+        </div>
+
+        <div class="card p-4">
+
+            {% if market == 'us' %}
+                {% if us_stocks is none %}
+                    <div class="error-container">
+                        <div class="error-icon">⚠️</div>
+                        <h3 class="fw-bold text-danger">Alpha Vantage 데이터 연결 실패</h3>
+                        <p class="text-muted col-md-8 mx-auto mt-3">
+                            API 키가 유효하지 않거나 일일 호출 한도(무료 티어 하루 25회)를 초과했을 수 있습니다.<br>
+                            <span class="text-dark small fw-semibold">개발자 안내: app.py 상단의 'ALPHA_VANTAGE_API_KEY' 값을 확인하세요.</span>
+                        </p>
+                        <a href="/?market=us" class="btn btn-danger page-btn mt-4 shadow-sm">🔄 다시 연결 시도</a>
+                    </div>
+                {% else %}
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h4 class="fw-bold m-0 text-dark">🇺🇸 미국 배당주 관심종목 리스트</h4>
+                            <p class="text-muted small m-0">관심종목 리스트를 기준으로 배당수익률과 배당예정일(배당락일)을 모니터링합니다. (24시간 캐시)</p>
+                        </div>
+                        <span class="text-primary fw-bold">총 {{ us_total }}개 종목</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>기업명 (Ticker)</th>
+                                    <th>섹터 (Sector)</th>
+                                    <th>현재 주가</th>
+                                    <th>시가총액</th>
+                                    <th>최근 배당금</th>
+                                    <th>배당률</th>
+                                    <th>배당예정일 (배당락일)</th>
+                                    <th>진단 배지</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in us_stocks %}
+                                <tr>
+                                    <td>
+                                        <span class="fw-bold text-dark">{{ stock.name }}</span><br>
+                                        <span class="text-muted font-monospace small">{{ stock.ticker }}</span>
+                                    </td>
+                                    <td><span class="text-secondary small">{{ stock.sector }}</span></td>
+                                    <td class="fw-semibold">{{ stock.price }}</td>
+                                    <td class="text-primary fw-semibold">{{ stock.market_cap }}</td>
+                                    <td>{{ stock.latest_div }}</td>
+                                    <td class="text-success fw-bold">{{ stock.div_yield }}</td>
+                                    <td>
+                                        <span class="text-exdate">
+                                            {% if stock.ex_date == '무배당' or stock.ex_date == '배당락일 미정' %}
+                                                <span class="text-muted fst-italic">{{ stock.ex_date }}</span>
+                                            {% else %}
+                                                📅 {{ stock.ex_date }}
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if stock.status == '성장' %}
+                                            <span class="badge badge-growth">배당성장추세</span>
+                                        {% elif stock.status == '안정' %}
+                                            <span class="badge badge-stable">고배당안정</span>
+                                        {% else %}
+                                            <span class="badge badge-none">무배당주</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+
+            {% else %}
+                {% if kr_stocks is none %}
+                    <div class="error-container">
+                        <div class="error-icon">⚠️</div>
+                        <h3 class="fw-bold text-danger">공공데이터포털 데이터 연결 실패</h3>
+                        <p class="text-muted col-md-8 mx-auto mt-3">
+                            서비스키가 유효하지 않거나 활용신청이 아직 승인되지 않았을 수 있습니다.<br>
+                            <span class="text-dark small fw-semibold">개발자 안내: app.py 상단의 'DATA_GO_KR_SERVICE_KEY' 값을 확인하세요.</span>
+                        </p>
+                        <a href="/?market=kr" class="btn btn-danger page-btn mt-4 shadow-sm">🔄 다시 연결 시도</a>
+                    </div>
+                {% else %}
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h4 class="fw-bold m-0 text-dark">🇰🇷 국내 배당주 관심종목 리스트</h4>
+                            <p class="text-muted small m-0">금융위원회 주식배당정보(공공데이터포털)를 기준으로 배당기준일·배당금·배당률을 확인합니다. (24시간 캐시, 데이터는 실시간이 아닌 영업일 D+1 기준)</p>
+                        </div>
+                        <span class="text-primary fw-bold">총 {{ kr_total }}개 종목</span>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>기업명</th>
+                                    <th>주식 종류</th>
+                                    <th>배당기준일</th>
+                                    <th>현금배당지급일</th>
+                                    <th>배당금액</th>
+                                    <th>배당률</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stock in kr_stocks %}
+                                <tr>
+                                    <td class="fw-bold text-dark">{{ stock.name }}</td>
+                                    <td><span class="text-secondary small">{{ stock.stock_kind }}</span></td>
+                                    <td>📅 {{ stock.base_date }}</td>
+                                    <td>{{ stock.pay_date }}</td>
+                                    <td>{{ stock.div_amount }}</td>
+                                    <td class="text-success fw-bold">{{ stock.div_rate }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            {% endif %}
+
+            {% set current_total = us_total if market == 'us' else kr_total %}
+            {% set current_list = us_stocks if market == 'us' else kr_stocks %}
+            {% if current_list is not none %}
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                {% if current_page > 0 %}
+                    <a href="/?market={{ market }}&page={{ current_page - 1 }}" class="btn btn-outline-secondary page-btn shadow-sm">← 이전</a>
+                {% else %}
+                    <button class="btn btn-outline-secondary page-btn" disabled>← 이전</button>
+                {% endif %}
+
+                <span class="text-muted small">페이지 <strong>{{ current_page + 1 }}</strong> / 총 {{ current_total }}개 종목</span>
+
+                {% if (current_page + 1) * 5 < current_total %}
+                    <a href="/?market={{ market }}&page={{ current_page + 1 }}" class="btn btn-primary page-btn shadow-sm text-white">다음 →</a>
+                {% else %}
+                    <button class="btn btn-primary page-btn" disabled>마지막 페이지</button>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    <footer class="text-center py-4 text-muted small">
+        © 2026 배당주 정보 뱅크. 🇺🇸 Alpha Vantage · 🇰🇷 공공데이터포털(금융위원회) 연동.
+    </footer>
+
+</body>
+</html>
